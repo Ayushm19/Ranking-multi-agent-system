@@ -2,6 +2,12 @@
 
 Seven specialist agents under a supervisor — guardrails, evidence verification, self-critique, and deterministic scoring.
 
+## Workflow
+
+[![Workflow](assets/workflow.png)](https://excalidraw.com/#json=EuWsEvlHfYPT4kje4EZNH,l1GJlZmVjNQNSdFFrqdaEg)
+
+[Open interactive diagram on Excalidraw](https://excalidraw.com/#json=EuWsEvlHfYPT4kje4EZNH,l1GJlZmVjNQNSdFFrqdaEg)
+
 ![Landing](assets/landing.png)
 
 ![Workbench](assets/workbench.png)
