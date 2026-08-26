@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-zinc-950">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranking Agent — From resume to ranked shortlist</title>
+<meta name="description" content="Multi-agent resume ranking with guardrails, evidence verification, and deterministic scoring.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          geist: ['Geist', 'Inter', 'ui-sans-serif', 'sans-serif'],
+        },
+        animation: {
+          scroll: 'scroll 40s linear infinite',
+          'wave-shift': 'waveShift 14s ease-in-out infinite alternate',
+        },
+        keyframes: {
+          scroll: {
+            '0%': { transform: 'translateX(0)' },
+            '100%': { transform: 'translateX(-50%)' },
+          },
+          waveShift: {
+            '0%': { transform: 'translate3d(-4%, 0, 0) scale(1.05)' },
+            '100%': { transform: 'translate3d(4%, -3%, 0) scale(1.12)' },
+          },
+        },
+        blur: { '120px': '120px' },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts.geist.css">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2310b981'/><path d='M9 21V11m7 10V15m7 6v-4' stroke='%23090b0a' stroke-width='3' stroke-linecap='round'/></svg>">
+<script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased selection:bg-emerald-400/30 overflow-x-hidden">
+
+<!-- LAYER 0: fixed background (exactly 1000px per reference quirks) -->
+<div class="fixed top-0 w-full h-[1000px] z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+  <!-- Static emerald glow behind the canvas -->
+  <div class="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full bg-emerald-500/25 blur-120px"></div>
+  <!-- CSS wave fallback (always visible; Unicorn paints on top when it loads) -->
+  <div class="absolute inset-0 opacity-70 mix-blend-screen">
+    <div class="absolute -left-1/4 top-0 w-[140%] h-[70%] bg-[radial-gradient(ellipse_at_center,_rgba(16,185,129,0.45)_0%,_transparent_55%)] animate-wave-shift"></div>
+    <div class="absolute right-[-20%] top-[10%] w-[80%] h-[60%] bg-[radial-gradient(ellipse_at_center,_rgba(52,211,153,0.25)_0%,_transparent_60%)] animate-wave-shift" style="animation-delay:-4s;animation-duration:18s"></div>
+    <div class="absolute left-[10%] top-[35%] w-[70%] h-[50%] bg-[radial-gradient(ellipse_at_center,_rgba(20,184,166,0.2)_0%,_transparent_65%)] animate-wave-shift" style="animation-delay:-8s;animation-duration:22s"></div>
+  </div>
+  <!-- Unicorn Studio canvas -->
+  <div
+    class="absolute inset-0 w-full h-full"
+    data-us-project="hQmuxsIsbhqg99eGrTZM"
+    data-us-production="true"
+    data-us-scale="1"
+    data-us-dpi="1.5"
+    data-us-alttext="Animated emerald wave background"
+    data-us-arialabel="Decorative animated background"
+  ></div>
+  <!-- Fade into page bg -->
+  <div class="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-zinc-950"></div>
+</div>
+
+<!-- LAYER 1: Nav -->
+<header class="fixed top-0 inset-x-0 z-50 flex justify-center px-4 pt-4">
+  <nav
+    class="w-full max-w-4xl flex items-center justify-between gap-4 rounded-2xl px-4 py-2.5 border border-transparent"
+    style="
+      background:
+        linear-gradient(rgba(9,9,11,0.72), rgba(9,9,11,0.72)) padding-box,
+        linear-gradient(120deg, rgba(16,185,129,0.35), rgba(255,255,255,0.08), rgba(16,185,129,0.15)) border-box;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    "
+  >
+    <a href="/" class="flex items-center gap-2.5 shrink-0">
+      <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20">
+        <i data-lucide="bar-chart-2" class="h-4 w-4"></i>
+      </span>
+      <span class="text-lg font-semibold font-geist tracking-tight">ranking-agent</span>
+    </a>
+
+    <div class="hidden md:flex items-center gap-1 text-sm text-zinc-400">
+      <a href="#how" class="px-3 py-1.5 rounded-lg hover:text-zinc-100 hover:bg-white/5 transition-colors">How it works</a>
+      <a href="#features" class="px-3 py-1.5 rounded-lg hover:text-zinc-100 hover:bg-white/5 transition-colors">Features</a>
+      <a href="/docs" class="px-3 py-1.5 rounded-lg hover:text-zinc-100 hover:bg-white/5 transition-colors">API</a>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="/app"
+         class="hidden sm:inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:translate-y-[-1px] hover:bg-emerald-400">
+        <i data-lucide="zap" class="h-4 w-4"></i>
+        Open workbench
+      </a>
+      <button type="button" id="menu-open" class="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-zinc-300" aria-label="Open menu">
+        <i data-lucide="plus" class="h-4 w-4 rotate-45" id="menu-icon"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<!-- LAYER 2: Mobile menu -->
+<div id="mobile-menu" class="fixed inset-0 z-[60] bg-zinc-950/95 backdrop-blur-xl translate-x-full transition-transform duration-300 md:hidden" aria-hidden="true">
+  <div class="flex items-center justify-between px-5 pt-6">
+    <span class="text-lg font-semibold font-geist">Menu</span>
+    <button type="button" id="menu-close" class="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-white/10" aria-label="Close menu">
+      <i data-lucide="plus" class="h-4 w-4 rotate-45"></i>
+    </button>
+  </div>
+  <nav class="mt-10 px-6 flex flex-col gap-1 text-lg">
+    <a href="#how" class="mobile-link border-b border-white/5 pb-4 pt-3">How it works</a>
+    <a href="#features" class="mobile-link border-b border-white/5 pb-4 pt-3">Features</a>
+    <a href="/docs" class="mobile-link border-b border-white/5 pb-4 pt-3">API</a>
+    <a href="/app" class="mobile-link border-b border-white/5 pb-4 pt-3 text-emerald-400">Open workbench</a>
+  </nav>
+</div>
+
+<!-- LAYER 3: Main -->
+<main class="relative z-10">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+    <!-- HERO -->
+    <section class="pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <div class="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div class="lg:col-span-5">
+          <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-300 backdrop-blur-md mb-6">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]"></span>
+            7 agents · 6 guardrails
+          </div>
+          <h1 class="font-geist text-4xl sm:text-5xl lg:text-[3.4rem] font-semibold leading-[1.08] tracking-tight text-white">
+            From resume to ranked shortlist—
+            <span class="bg-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(110,231,183,0.35)]">Faster.</span>
+          </h1>
+          <p class="mt-5 text-base sm:text-lg text-zinc-400 font-light max-w-md leading-relaxed">
+            Seven specialist agents read a job and a resume, quote the evidence, and hand off to deterministic scoring. No black-box numbers.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="/app"
+               class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:translate-y-[-1px] hover:bg-emerald-400">
+              <i data-lucide="file" class="h-4 w-4"></i>
+              Rank a resume
+            </a>
+            <a href="#how"
+               class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-200 transition-all duration-300 hover:bg-white/10">
+              See the pipeline
+            </a>
+          </div>
+        </div>
+
+        <!-- Dashboard mockup 1:2 — animated resume + agent rail -->
+        <div class="lg:col-span-7">
+          <div class="rounded-2xl bg-zinc-950/90 ring-1 ring-emerald-500/10 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
+            <div class="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+              <span class="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+              <span class="ml-2 text-[11px] font-geist text-zinc-500 tracking-wide">supervisor · run trace</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-0">
+              <!-- Animated resume sheet -->
+              <div class="md:col-span-1 border-b md:border-b-0 md:border-r border-white/5 p-4">
+                <div class="resume-sheet relative overflow-hidden rounded-xl border border-white/10 bg-black/40 p-3 min-h-[260px]"
+                     role="img"
+                     aria-label="Animated resume being scanned by ranking agents">
+                  <div class="resume-scanner" aria-hidden="true"></div>
+                  <div class="text-sm font-medium text-zinc-100">A. Kumar</div>
+                  <div class="text-[11px] text-zinc-500 mb-3">Senior Backend · 9 yrs</div>
+
+                  <div class="text-[10px] uppercase tracking-wider text-emerald-400/80 font-geist mb-1.5">Experience</div>
+                  <div class="resume-line w-[95%]"></div>
+                  <div class="resume-line w-[80%]"></div>
+                  <div class="resume-line w-[62%]"></div>
+
+                  <div class="text-[10px] uppercase tracking-wider text-emerald-400/80 font-geist mb-1.5 mt-3">Impact</div>
+                  <div class="resume-line w-[70%]"></div>
+                  <div class="resume-line w-[48%]"></div>
+                  <div class="resume-line w-[36%]"></div>
+
+                  <div class="text-[10px] uppercase tracking-wider text-emerald-400/80 font-geist mb-1.5 mt-3">Skills</div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <span class="resume-chip">Python</span>
+                    <span class="resume-chip">FastAPI</span>
+                    <span class="resume-chip">Postgres</span>
+                    <span class="resume-chip">Kafka</span>
+                    <span class="resume-chip">K8s</span>
+                    <span class="resume-chip">Docker</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Agent rail + score -->
+              <div class="md:col-span-2 p-4 space-y-2">
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">jd_analyst</span><span>profile</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">resume_parser</span><span>structured</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">skill_match</span><span>92</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">experience_quality</span><span>81</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">scale_impact</span><span>77</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">evidence_verifier</span><span>94%</span>
+                </div>
+                <div class="agent-row flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-zinc-500">
+                  <span class="agent-tick inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current"><i data-lucide="check" class="h-2.5 w-2.5 opacity-0"></i></span>
+                  <span class="flex-1">critic</span><span>accept</span>
+                </div>
+
+                <div class="verdict-card flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 mt-2">
+                  <div class="relative h-12 w-12 shrink-0">
+                    <svg viewBox="0 0 36 36" class="h-12 w-12 -rotate-90">
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+                      <circle class="dial-fill" cx="18" cy="18" r="15" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-dasharray="94" stroke-dashoffset="94"/>
+                    </svg>
+                    <span class="absolute inset-0 grid place-items-center text-xs font-semibold font-geist">75</span>
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium">Strong match</div>
+                    <div class="text-[11px] text-zinc-500"><span class="text-emerald-400">94%</span> of evidence verified · critic: accept</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIPELINE STEPS (replaces logo cloud) -->
+    <section class="py-14 border-t border-white/5">
+      <p class="text-center text-sm text-zinc-500 mb-8">From upload to ranked shortlist in six steps</p>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 items-start justify-items-center text-center">
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="file" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Ingest</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">JD + resumes</div>
+        </div>
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="search" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Guard</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">Scan &amp; redact</div>
+        </div>
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="zap" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Evaluate</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">7 agents</div>
+        </div>
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="book-open" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Verify</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">Ground quotes</div>
+        </div>
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="bar-chart-2" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Score</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">Deterministic</div>
+        </div>
+        <div class="group">
+          <div class="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300">
+            <i data-lucide="send" class="h-4 w-4"></i>
+          </div>
+          <div class="text-zinc-300 font-geist font-semibold text-sm transition-all duration-300 group-hover:text-emerald-300">Shortlist</div>
+          <div class="text-[11px] text-zinc-600 mt-0.5">Ranked output</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BENTO -->
+    <section id="features" class="py-16">
+      <div class="mb-10 max-w-xl">
+        <h2 class="font-geist text-3xl sm:text-4xl font-semibold tracking-tight">Built like a product, not a prompt.</h2>
+        <p class="mt-3 text-zinc-400 font-light">Agents judge. Code decides. Every quote is checked against the source document.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a href="/app" class="group rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px] transition-colors duration-300 hover:bg-[#161616]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">Workbench</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">Drop resumes, paste a JD, get ranked output with dimensions, evidence, and penalties.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">Paste &amp; rank</div>
+        </a>
+
+        <div class="rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="zap" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">Smart processing</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">PII redaction, injection defence, and bias screens run before any model call. High-severity resumes are rejected; the batch continues.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">6 guardrail layers</div>
+        </div>
+
+        <div class="rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="book-open" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">Evidence reports</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">Every quote is matched against the source resume. Unverifiable claims lower the score and can trigger human review.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">Groundedness checks</div>
+        </div>
+
+        <div class="rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="git-branch" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">Agent pipeline</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">Seven specialists fan out in parallel, then fan in through a verifier and critic before deterministic scoring.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">Fan-out · fan-in</div>
+        </div>
+
+        <div class="rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="flask-conical" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">Eval harness</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">Golden-set NDCG, self-consistency across repeats, and an independent LLM judge so “did it get better?” has an answer.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">NDCG · judge · consistency</div>
+        </div>
+
+        <div class="rounded-2xl bg-[#121212] p-8 flex flex-col justify-between min-h-[260px]">
+          <div>
+            <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-emerald-400 mb-5">
+              <i data-lucide="code-2" class="h-5 w-5"></i>
+            </div>
+            <h3 class="font-geist text-xl font-semibold text-white">API first</h3>
+            <p class="mt-3 text-sm text-zinc-400 font-light leading-relaxed">Rank via multipart upload or JSON text. Same agents, same guardrails, same deterministic scorer behind every call.</p>
+          </div>
+          <div class="mt-8 text-xs font-geist text-zinc-500 tracking-wide uppercase">OpenAPI ready</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW -->
+    <section id="how" class="py-16 border-t border-white/5">
+      <div class="max-w-xl mb-10">
+        <h2 class="font-geist text-3xl sm:text-4xl font-semibold tracking-tight">LLMs judge. Code decides.</h2>
+        <p class="mt-3 text-zinc-400 font-light">Agents never emit the final score. Each returns a 0–100 opinion with quotes; Python does the arithmetic.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="rounded-2xl border border-white/5 bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-all duration-300">
+          <i data-lucide="search" class="h-5 w-5 text-emerald-400 mb-3"></i>
+          <h3 class="font-geist font-semibold">Parse &amp; profile</h3>
+          <p class="mt-2 text-sm text-zinc-400 font-light">JD analyst and resume parser run in parallel into structured profiles.</p>
+        </div>
+        <div class="rounded-2xl border border-white/5 bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-all duration-300">
+          <i data-lucide="bar-chart-2" class="h-5 w-5 text-emerald-400 mb-3"></i>
+          <h3 class="font-geist font-semibold">Six evaluators</h3>
+          <p class="mt-2 text-sm text-zinc-400 font-light">Role, capability, skills, experience, scale, domain — none sees the others.</p>
+        </div>
+        <div class="rounded-2xl border border-white/5 bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-all duration-300">
+          <i data-lucide="book-open" class="h-5 w-5 text-emerald-400 mb-3"></i>
+          <h3 class="font-geist font-semibold">Verify &amp; score</h3>
+          <p class="mt-2 text-sm text-zinc-400 font-light">Quotes are grounded, then a deterministic scorer applies weights and penalties.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TICKER -->
+    <section class="py-16 relative overflow-hidden">
+      <div class="pointer-events-none absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-zinc-950 to-transparent"></div>
+      <div class="pointer-events-none absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-zinc-950 to-transparent"></div>
+      <div class="flex gap-4 animate-scroll whitespace-nowrap no-scrollbar w-max">
+        <!-- duplicated set for seamless loop -->
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-300 grid place-items-center text-xs font-semibold">AT</span><span class="text-sm text-zinc-300">Aisha T.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Finally a ranker that shows why — not just a score.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-sky-500/20 text-sky-300 grid place-items-center text-xs font-semibold">NP</span><span class="text-sm text-zinc-300">Nikhil P.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Injection defence caught a poisoned resume in our first batch.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-amber-500/20 text-amber-300 grid place-items-center text-xs font-semibold">MK</span><span class="text-sm text-zinc-300">Maya K.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Groundedness penalties make hallucinated quotes impossible to hide.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-violet-500/20 text-violet-300 grid place-items-center text-xs font-semibold">EG</span><span class="text-sm text-zinc-300">Elena G.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“We ship shortlists with an audit trail now. Recruiters trust it.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-300 grid place-items-center text-xs font-semibold">AT</span><span class="text-sm text-zinc-300">Aisha T.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Finally a ranker that shows why — not just a score.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-sky-500/20 text-sky-300 grid place-items-center text-xs font-semibold">NP</span><span class="text-sm text-zinc-300">Nikhil P.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Injection defence caught a poisoned resume in our first batch.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-amber-500/20 text-amber-300 grid place-items-center text-xs font-semibold">MK</span><span class="text-sm text-zinc-300">Maya K.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“Groundedness penalties make hallucinated quotes impossible to hide.”</p>
+        </div>
+        <div class="shrink-0 w-[280px] rounded-2xl bg-white/5 border border-white/5 p-4 whitespace-normal">
+          <div class="flex items-center gap-2 mb-3"><span class="h-8 w-8 rounded-full bg-violet-500/20 text-violet-300 grid place-items-center text-xs font-semibold">EG</span><span class="text-sm text-zinc-300">Elena G.</span></div>
+          <p class="text-sm text-zinc-400 font-light">“We ship shortlists with an audit trail now. Recruiters trust it.”</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="pt-16 pb-10 border-t border-white/5">
+      <div class="grid md:grid-cols-2 gap-10">
+        <div>
+          <h2 class="font-geist text-2xl font-semibold tracking-tight">Ready to rank with evidence?</h2>
+          <p class="mt-2 text-zinc-400 text-sm font-light max-w-sm">Paste a JD and resumes in the workbench — or hit the API from your ATS.</p>
+          <a href="/app" class="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:translate-y-[-1px]">
+            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-950/15">
+              <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+            </span>
+            Open workbench
+          </a>
+        </div>
+        <div class="grid grid-cols-2 gap-8 text-sm">
+          <div>
+            <div class="font-geist text-zinc-300 mb-3">Product</div>
+            <ul class="space-y-2 text-zinc-500">
+              <li><a href="/app" class="hover:text-zinc-200 transition-colors">Workbench</a></li>
+              <li><a href="/docs" class="hover:text-zinc-200 transition-colors">API docs</a></li>
+              <li><a href="/healthz" class="hover:text-zinc-200 transition-colors">Health</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-geist text-zinc-300 mb-3">Socials</div>
+            <ul class="space-y-2 text-zinc-500">
+              <li><a href="https://github.com" class="hover:text-zinc-200 transition-colors">GitHub</a></li>
+              <li><a href="/docs" class="hover:text-zinc-200 transition-colors">OpenAPI</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="mt-12 pt-6 border-t border-white/5 flex flex-wrap gap-4 justify-between text-xs text-zinc-600">
+        <span>© 2024 ranking-agent</span>
+        <div class="flex gap-4">
+          <a href="#" class="hover:text-zinc-400">Privacy</a>
+          <a href="#" class="hover:text-zinc-400">Terms</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.29/dist/unicornStudio.umd.js"></script>
+<script>
+  lucide.createIcons();
+
+  // Unicorn Studio init (safe if script/project unavailable)
+  try {
+    if (window.UnicornStudio && typeof UnicornStudio.init === 'function') {
+      UnicornStudio.init();
+    }
+  } catch (_) { /* CSS wave fallback remains */ }
+
+  const menu = document.getElementById('mobile-menu');
+  const openBtn = document.getElementById('menu-open');
+  const closeBtn = document.getElementById('menu-close');
+  function openMenu() {
+    menu.classList.remove('translate-x-full');
+    menu.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('overflow-hidden');
+  }
+  function closeMenu() {
+    menu.classList.add('translate-x-full');
+    menu.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('overflow-hidden');
+  }
+  openBtn.addEventListener('click', openMenu);
+  closeBtn.addEventListener('click', closeMenu);
+  document.querySelectorAll('.mobile-link').forEach((a) => a.addEventListener('click', closeMenu));
+</script>
+</body>
+</html>

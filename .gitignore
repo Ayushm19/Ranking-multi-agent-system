@@ -1,0 +1,36 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local resumes / ranking dumps
+*.pdf
+*_Resume*
+rank_*.json
+
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local-only
+logs/
+docs/
+datasets/
+tests/
+
+# Editor / agent tooling
+.cursor/
+.agents/
+skills-lock.json
+.vscode/
+.idea/

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" class="wb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workbench — Ranking Agent</title>
+<meta name="description" content="Rank resumes against a job description with multi-agent scoring and grounded evidence.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          canvas: '#0a0a0b',
+          panel: '#111113',
+          line: 'rgba(255,255,255,0.08)',
+          ink: '#ececef',
+          mute: '#8b8b93',
+          accent: '#3ecf8e',
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111113' stroke='%233ecf8e' stroke-width='2'/><path d='M10 22V12m6 10v-6m6 6v-3' stroke='%233ecf8e' stroke-width='2.5' stroke-linecap='round'/></svg>">
+<script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="wb-body antialiased selection:bg-accent/25 selection:text-ink">
+
+<a href="#workbench-main" class="wb-skip">Skip to workbench</a>
+
+<header class="wb-topbar">
+  <div class="wb-topbar-inner">
+    <div class="wb-brand">
+      <a href="/" class="wb-logo" aria-label="Ranking Agent home">
+        <span class="wb-logo-mark" aria-hidden="true">
+          <i data-lucide="bar-chart-2" class="h-3.5 w-3.5"></i>
+        </span>
+        <span class="wb-logo-text">ranking-agent</span>
+      </a>
+      <span class="wb-crumb" aria-hidden="true">/</span>
+      <span class="wb-crumb-current">Workbench</span>
+    </div>
+    <nav class="wb-nav" aria-label="Primary">
+      <a href="/" class="wb-nav-link">Home</a>
+      <a href="/app" class="wb-nav-link is-active" aria-current="page">Workbench</a>
+      <a href="/docs" class="wb-nav-link">API</a>
+      <span id="provider-badge" class="wb-provider">…</span>
+    </nav>
+  </div>
+</header>
+
+<main id="workbench-main" class="wb-main">
+  <div class="wb-toolbar">
+    <div class="wb-toolbar-copy">
+      <p class="wb-kicker">Candidate ranking</p>
+      <h1 class="wb-title">Score resumes against a role</h1>
+      <p class="wb-sub">Upload resumes, paste the job description, run the agent graph. Evidence and scores land below.</p>
+    </div>
+  </div>
+
+  <ol class="wb-steps" aria-label="Workflow steps">
+    <li class="wb-step"><span class="wb-step-n">1</span> Resumes</li>
+    <li class="wb-step"><span class="wb-step-n">2</span> Job description</li>
+    <li class="wb-step"><span class="wb-step-n">3</span> Rank</li>
+  </ol>
+
+  <form id="rank-form" class="wb-form" novalidate>
+    <div class="wb-grid">
+      <section class="wb-panel">
+        <header class="wb-panel-head">
+          <div>
+            <h2 class="wb-panel-title">Resumes</h2>
+            <p class="wb-panel-meta">PDF or plain text</p>
+          </div>
+          <span id="cand-count" class="wb-meta-pill">none yet</span>
+        </header>
+        <div class="wb-panel-body">
+          <div
+            id="dropzone"
+            role="button"
+            tabindex="0"
+            aria-label="Upload resume files. Accepts PDF and plain text."
+            class="wb-dropzone"
+          >
+            <div class="wb-dropzone-icon" aria-hidden="true">
+              <i data-lucide="upload" class="h-5 w-5"></i>
+            </div>
+            <div class="wb-dropzone-title">Drop resumes here</div>
+            <div class="wb-dropzone-hint">or <span>browse files</span> · PDF / TXT / MD</div>
+            <input type="file" id="files" accept=".pdf,.txt,.md" multiple hidden>
+          </div>
+          <div id="file-chips" class="wb-chips" hidden></div>
+        </div>
+      </section>
+
+      <section class="wb-panel">
+        <header class="wb-panel-head">
+          <div>
+            <h2 class="wb-panel-title">Job description</h2>
+            <p class="wb-panel-meta">Role requirements</p>
+          </div>
+          <span id="jd-count" class="wb-meta-pill">0 chars</span>
+        </header>
+        <div class="wb-panel-body wb-panel-body--fill">
+          <label class="wb-jd-label">
+            <span class="sr-only">Job description text</span>
+            <textarea id="jd" required class="wb-textarea" placeholder="Paste the role requirements here…
+
+Senior Backend Engineer
+6+ years building distributed services. Strong Python and FastAPI, deep PostgreSQL, Kubernetes and Docker in production."></textarea>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div class="wb-runbar">
+      <p class="wb-runbar-hint">Runs JD analysis, resume parse, four evaluators, verifier, scorer, and critic.</p>
+      <button type="submit" id="run" class="wb-btn wb-btn-primary">
+        <i data-lucide="play" class="h-4 w-4"></i>
+        Rank candidates
+      </button>
+    </div>
+  </form>
+
+  <section aria-live="polite" aria-busy="false" id="output-region" class="wb-output">
+    <div class="wb-output-head">
+      <h2 class="wb-panel-title">Results</h2>
+      <p class="wb-panel-meta">Ranked by final score with expandable evidence</p>
+    </div>
+    <div id="status-slot"></div>
+
+    <div id="empty" class="wb-empty">
+      <div class="wb-empty-icon" aria-hidden="true">
+        <i data-lucide="rows-3" class="h-5 w-5"></i>
+      </div>
+      <p class="wb-empty-title">No rankings yet</p>
+      <p class="wb-empty-copy">
+        Add resumes and a job description, then run rank. Details expand inline under each candidate.
+      </p>
+    </div>
+
+    <div id="results" class="wb-results space-y-3" hidden></div>
+  </section>
+</main>
+
+<footer class="wb-footer">
+  <span>Multi-agent resume ranking</span>
+  <a href="/">Back to home</a>
+</footer>
+
+<script>
+  lucide.createIcons();
+</script>
+<script src="/static/js/app.js"></script>
+<script>
+  const _obs = new MutationObserver(() => { try { lucide.createIcons(); } catch (_) {} });
+  _obs.observe(document.getElementById('results'), { childList: true, subtree: true });
+  _obs.observe(document.getElementById('status-slot'), { childList: true, subtree: true });
+  _obs.observe(document.getElementById('file-chips'), { childList: true, subtree: true });
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+[project]
+name = "ranking-agent"
+version = "0.1.0"
+description = "Multi-agent resume ranking system with guardrails, evidence verification, and built-in evaluation"
+readme = "README.md"
+authors = [
+    { name = "Ayush Mishra", email = "knandan400@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
+    "numpy>=2.5.2",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.15.0",
+    "pypdf>=6.16.2",
+    "python-dotenv>=1.2.3",
+    "python-multipart>=0.0.32",
+    "rapidfuzz>=3.14.5",
+    "structlog>=26.1.0",
+    "tenacity>=9.1.4",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.11,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "playwright>=1.62.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-playwright>=0.9.0",
+    "ruff>=0.16.4",
+]
+
+[tool.fastapi]
+entrypoint = "main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Vendored assets (the ui-ux-pro-max skill ships its own scripts) are not ours to lint.
+extend-exclude = [".cursor", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "BLE"]
+ignore = [
+    "B008",   # FastAPI dependencies are declared in defaults by design
+    "RUF012", # ClassVar annotations are noise on prompt constants
+    "RUF001", # en/em dashes are intentional: resumes use them in date ranges
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = false
+ignore_missing_imports = true
+plugins = []

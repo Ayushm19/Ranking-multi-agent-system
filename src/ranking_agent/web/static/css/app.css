@@ -1,0 +1,489 @@
+/* Workbench (/app) — product UI, separate from marketing landing */
+
+.wb,
+.wb-body {
+  background: #0a0a0b;
+  color: #ececef;
+  font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+.wb-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 8px 12px;
+  background: #3ecf8e;
+  color: #0a0a0b;
+  font-weight: 600;
+  font-size: 13px;
+}
+.wb-skip:focus {
+  left: 12px;
+  top: 12px;
+}
+
+/* —— Top bar (flat product chrome, not landing glass) —— */
+.wb-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 11, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.wb-topbar-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.wb-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.wb-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #ececef;
+}
+.wb-logo-mark {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #16161a;
+  border: 1px solid rgba(62, 207, 142, 0.35);
+  color: #3ecf8e;
+}
+.wb-logo-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.wb-crumb {
+  color: #3f3f46;
+  font-size: 14px;
+}
+.wb-crumb-current {
+  font-size: 13px;
+  color: #8b8b93;
+  font-weight: 500;
+}
+.wb-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wb-nav-link {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b8b93;
+  text-decoration: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.wb-nav-link:hover {
+  color: #ececef;
+  background: rgba(255, 255, 255, 0.04);
+}
+.wb-nav-link.is-active {
+  color: #ececef;
+  background: rgba(255, 255, 255, 0.06);
+}
+.wb-provider {
+  margin-left: 6px;
+  display: none;
+  align-items: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #16161a;
+  padding: 4px 8px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: #8b8b93;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 640px) {
+  .wb-provider { display: inline-flex; }
+}
+
+/* —— Main —— */
+.wb-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+.wb-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (min-width: 768px) {
+  .wb-toolbar {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+.wb-kicker {
+  margin: 0 0 6px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3ecf8e;
+}
+.wb-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.4vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.wb-sub {
+  margin: 8px 0 0;
+  max-width: 48ch;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: #8b8b93;
+  text-wrap: pretty;
+}
+
+.wb-steps {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111113;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8b8b93;
+}
+.wb-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(62, 207, 142, 0.12);
+  color: #3ecf8e;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* —— Buttons —— */
+.wb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 560;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+.wb-btn:active { transform: scale(0.98); }
+.wb-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.wb-btn-ghost {
+  background: #111113;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #c4c4cc;
+}
+.wb-btn-ghost:hover {
+  background: #16161a;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ececef;
+}
+.wb-btn-primary {
+  background: #3ecf8e;
+  color: #0a0a0b;
+  border-color: #3ecf8e;
+  padding: 10px 16px;
+  font-weight: 600;
+}
+.wb-btn-primary:hover:not(:disabled) {
+  background: #55d89c;
+}
+
+/* —— Panels —— */
+.wb-form { display: flex; flex-direction: column; gap: 14px; }
+.wb-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+@media (min-width: 960px) {
+  .wb-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+.wb-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  background: #111113;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.wb-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0e0e10;
+}
+.wb-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ececef;
+}
+.wb-panel-meta {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #6b6b73;
+}
+.wb-meta-pill {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: #8b8b93;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+.wb-panel-body {
+  flex: 1;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wb-panel-body--fill { min-height: 0; }
+.wb-jd-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wb-dropzone {
+  flex: 1;
+  min-height: 168px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: #0c0c0e;
+  padding: 24px 16px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.wb-dropzone:hover,
+.wb-dropzone:focus-visible {
+  outline: none;
+  border-color: rgba(62, 207, 142, 0.45);
+  background: rgba(62, 207, 142, 0.04);
+}
+.wb-dropzone.is-drag {
+  border-color: rgba(62, 207, 142, 0.65);
+  background: rgba(62, 207, 142, 0.07);
+}
+.wb-dropzone-icon {
+  display: inline-flex;
+  height: 40px;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(62, 207, 142, 0.08);
+  border: 1px solid rgba(62, 207, 142, 0.2);
+  color: #3ecf8e;
+  margin-bottom: 12px;
+}
+.wb-dropzone-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ececef;
+}
+.wb-dropzone-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b6b73;
+}
+.wb-dropzone-hint span { color: #3ecf8e; font-weight: 500; }
+
+.wb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wb-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 168px;
+  resize: none;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0c0c0e;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #ececef;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.wb-textarea::placeholder { color: #52525b; }
+.wb-textarea:focus {
+  outline: none;
+  border-color: rgba(62, 207, 142, 0.45);
+  box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.12);
+}
+
+.wb-runbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111113;
+}
+@media (min-width: 640px) {
+  .wb-runbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+.wb-runbar-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #6b6b73;
+  max-width: 52ch;
+  line-height: 1.45;
+}
+
+/* —— Output —— */
+.wb-output { margin-top: 28px; }
+.wb-output-head { margin-bottom: 12px; }
+.wb-empty {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: #111113;
+  padding: 40px 20px;
+  text-align: center;
+}
+.wb-empty-icon {
+  display: inline-flex;
+  height: 40px;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8b8b93;
+  margin-bottom: 12px;
+}
+.wb-empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ececef;
+}
+.wb-empty-copy {
+  margin: 6px auto 0;
+  max-width: 42ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b6b73;
+}
+
+.wb-footer {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: #52525b;
+}
+.wb-footer a {
+  color: #8b8b93;
+  text-decoration: none;
+}
+.wb-footer a:hover { color: #ececef; }
+
+/* Workbench result cards — quieter than landing aesthetic */
+.wb .result-card {
+  background: #111113 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+.wb .result-card[data-top="true"] {
+  border-color: rgba(62, 207, 142, 0.35);
+}
+.wb .view-details-btn {
+  border-radius: 7px;
+  background: #16161a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #3ecf8e;
+  font-family: Outfit, sans-serif;
+}
+.wb .detail-section-title { color: #3ecf8e; }
+.wb .detail-reasoning { border-left-color: #3ecf8e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-btn,
+  .wb-dropzone,
+  .wb-nav-link,
+  .wb-textarea {
+    transition: none;
+  }
+}
