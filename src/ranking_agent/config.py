@@ -86,7 +86,24 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
     "gemini-3.5-flash": (0.50, 3.00),
     "gemini-3.6-flash": (0.50, 3.00),
     "gemini-3.7-flash": (0.50, 3.00),
+    # Gemini — older free-tier fallback chain (separate quota pools)
+    "gemini-2.5-flash-lite": (0.10, 0.40),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.0-flash-lite": (0.075, 0.30),
+    "gemini-2.0-flash": (0.10, 0.40),
+    "gemini-1.5-flash": (0.075, 0.30),
 }
+
+# Tried in order after the configured model hits 429/503/404; each Gemini
+# model has its own free-tier quota, so a different model often still has
+# headroom. Gemini 2.x/1.5 are sunset for new API keys as of this account —
+# stick to the gemini-3.x family that's actually reachable.
+DEFAULT_GEMINI_MODEL_FALLBACKS: tuple[str, ...] = (
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash",
+)
 
 
 from pathlib import Path
@@ -115,6 +132,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     gemini_api_key_fallback: str | None = None  # rotate on 429
+    gemini_model_fallbacks: str = ""  # comma-separated; blank → DEFAULT_GEMINI_MODEL_FALLBACKS
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     azure_api_key: str | None = None
@@ -185,6 +203,15 @@ class Settings(BaseSettings):
             if key and key not in keys:
                 keys.append(key)
         return keys
+
+    @property
+    def gemini_fallback_models(self) -> tuple[str, ...]:
+        """Models to try, in order, after the requested model is exhausted."""
+        if not self.gemini_model_fallbacks.strip():
+            return DEFAULT_GEMINI_MODEL_FALLBACKS
+        return tuple(
+            m.strip() for m in self.gemini_model_fallbacks.split(",") if m.strip()
+        )
 
     def weights_for(self, level: str) -> dict[str, float]:
         return DIMENSION_WEIGHTS.get(level, DIMENSION_WEIGHTS["MID"])

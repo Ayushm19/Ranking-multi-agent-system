@@ -84,10 +84,43 @@ class LLMClient:
         model: str | None = None,
         temperature: float | None = None,
     ) -> tuple[dict[str, Any], LLMUsage]:
-        """Call the model and return ``(parsed_json, usage)``."""
+        """Call the model and return ``(parsed_json, usage)``.
+
+        On 429/503 (quota/overload), rotates through Gemini API keys first;
+        once a model's keys are exhausted (or the model itself 404s / is
+        rejected outright), falls back to the next configured model — free
+        models get pulled without notice and free-tier quota is per-model, so
+        a different model often still has headroom.
+        """
         self.cost.check_budget()
-        mdl = model or self.settings.model
+        primary = model or self.settings.model
         temp = self.settings.temperature if temperature is None else temperature
+        if self.settings.provider == "gemini":
+            models = [primary, *[m for m in self.settings.gemini_fallback_models if m != primary]]
+        else:
+            models = [primary]
+
+        last_error: Exception | None = None
+        for mdl in models:
+            try:
+                return await self._complete_with_model(system, user, task, mdl, temp)
+            except (LLMError, LLMTransientError, ValueError, httpx.HTTPError) as exc:
+                last_error = exc
+                if mdl != models[-1]:
+                    logger.warning(
+                        "model=%s failed for task=%s (%s) — falling back to next model",
+                        mdl, task, exc,
+                    )
+
+        raise LLMError(
+            f"task={task} failed after exhausting models {models}: {last_error}"
+        ) from last_error
+
+    async def _complete_with_model(
+        self, system: str, user: str, task: str, mdl: str, temp: float
+    ) -> tuple[dict[str, Any], LLMUsage]:
+        """Retry a single model across its configured Gemini keys."""
+        self._gemini_key_index = 0
         last_error: Exception | None = None
 
         for attempt in range(1, self.settings.max_retries + 1):
@@ -95,27 +128,26 @@ class LLMClient:
                 raw, usage = await self._dispatch(system, user, task, mdl, temp)
                 self.cost.add(usage)
                 return extract_json(raw), usage
+            except LLMError:
+                raise  # non-retryable for this model — let the caller try the next one
             except (LLMTransientError, ValueError, httpx.HTTPError) as exc:
                 last_error = exc
-                rotated = False
-                if isinstance(exc, LLMTransientError) and "429" in str(exc):
-                    rotated = self._rotate_gemini_key_on_quota()
+                rotated = isinstance(exc, LLMTransientError) and "429" in str(exc) \
+                    and self._rotate_gemini_key_on_quota()
                 if attempt >= self.settings.max_retries:
-                    break
+                    raise
                 delay = self.settings.retry_base_delay_s * (2 ** (attempt - 1))
                 delay += random.uniform(0, delay * 0.25)
                 if rotated:
                     delay = min(delay, 0.35)  # fresh key → short backoff
                 logger.warning(
-                    "llm attempt %d/%d failed for task=%s: %s (retry in %.2fs)",
-                    attempt, self.settings.max_retries, task, exc, delay,
+                    "llm attempt %d/%d failed for task=%s model=%s: %s (retry in %.2fs)",
+                    attempt, self.settings.max_retries, task, mdl, exc, delay,
                 )
                 await asyncio.sleep(delay)
-            except LLMError:
-                raise
 
         raise LLMError(
-            f"task={task} failed after {self.settings.max_retries} attempts: {last_error}"
+            f"task={task} model={mdl} failed after {self.settings.max_retries} attempts: {last_error}"
         ) from last_error
 
     def _rotate_gemini_key_on_quota(self) -> bool:
